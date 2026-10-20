@@ -14,7 +14,7 @@ export async function searchOpenSubtitles(query: SubtitleSearchQuery): Promise<S
   const apiKey = process.env.OPENSUBTITLES_API_KEY;
   if (!apiKey) throw new Error('کلید OPENSUBTITLES_API_KEY تنظیم نشده است.');
   const params = new URLSearchParams({ query: query.query, languages: query.languages.join(',') || 'fa,en', order_by: 'download_count', order_direction: 'desc' });
-  if (query.type) params.set('type', query.type);
+  if (query.type) params.set('type', query.type === 'tv' ? 'episode' : 'movie');
   if (query.year) params.set('year', String(query.year));
   if (query.season !== undefined) params.set('season_number', String(query.season));
   if (query.episode !== undefined) params.set('episode_number', String(query.episode));

@@ -102,7 +102,7 @@ export default function App() {
           <label>{english ? 'Year' : 'سال انتشار'}<input inputMode="numeric" value={year} onChange={(e) => setYear(e.target.value.replace(/\D/g, '').slice(0,4))} placeholder="2024"/></label>
           <label>{english ? 'Season' : 'فصل'}<input inputMode="numeric" value={season} onChange={(e) => setSeason(e.target.value.replace(/\D/g, '').slice(0,3))} placeholder="1"/></label>
           <label>{english ? 'Episode' : 'قسمت'}<input inputMode="numeric" value={episode} onChange={(e) => setEpisode(e.target.value.replace(/\D/g, '').slice(0,3))} placeholder="1"/></label>
-          <button onClick={() => {resetFilters(); if (hasSearched) window.setTimeout(() => void searchSubtitles(), 0);}}>{english ? 'Reset filters' : 'پاک‌کردن فیلترها'}</button>
+          <button onClick={resetFilters}>{english ? 'Reset filters' : 'پاک‌کردن فیلترها'}</button>
         </div>}
         <div className="results-meta"><span>{hasSearched ? (english ? `${subtitles.length} results` : `${subtitles.length} نتیجه`) : (english ? 'Ready to search' : 'آماده جست‌وجو')}</span><span className="demo-note"><span/>{english ? 'Live API results; availability depends on provider keys' : 'نتایج زنده API؛ وابسته به تنظیم کلید منابع'}</span></div>
         {loading && <div className="status-panel"><LoaderCircle className="spin" size={24}/><span>{english ? 'Searching subtitle providers…' : 'در حال جست‌وجو در منابع زیرنویس…'}</span></div>}

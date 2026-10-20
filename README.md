@@ -8,6 +8,8 @@ A bilingual Persian/English subtitle discovery app built with TypeScript, React,
 - Live subtitle search through provider adapters
 - Search filters for language, movie/series type, year, season, and episode
 - Unified results from SubDL and OpenSubtitles
+- Authenticated OpenSubtitles download-link requests
+- Short-lived in-memory search cache to reduce repeated API usage
 - Provider status and actionable API error messages
 - Rate-limited API, CORS allowlist, input validation, and download-host allowlist
 - CI type-check and production build
@@ -57,7 +59,8 @@ The Express API and frontend need to be deployed on a Node-capable host, or the 
 - `GET /api/health` — API status and provider-key presence (never exposes key values)
 - `GET /api/subtitles?q=Inception&languages=fa,en&type=movie&year=2010` — merged subtitle search
 - `GET /api/download?url=...` — redirects only to supported SubDL download URLs
+- `POST /api/download/opensubtitles` with `{ "fileId": 123 }` — requests a temporary download link using the server-side API key
 
 ## Status
 
-Initial API and live-search implementation. Run CI and configure provider keys before treating the service as production-ready.
+Live search and provider-specific download-link flow are implemented in code. Configure provider keys and verify the CI build before treating the service as production-ready.

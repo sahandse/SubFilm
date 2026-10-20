@@ -1,0 +1,29 @@
+name: Deploy SubFilm Worker to Cloudflare
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Deploy Worker
+        working-directory: .
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SUBDL_API_KEY: ${{ secrets.SUBDL_API_KEY }}
+        run: |
+          npx --yes wrangler@4 deploy
+          printf '%s' "$SUBDL_API_KEY" | npx --yes wrangler@4 secret put SUBDL_API_KEY

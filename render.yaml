@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: subfilm
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SUBDL_API_KEY
+        sync: false
+      - key: OPENSUBTITLES_API_KEY
+        sync: false
+      - key: OPENSUBTITLES_USER_AGENT
+        value: SubFilm v0.2.0

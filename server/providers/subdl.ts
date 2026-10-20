@@ -20,6 +20,17 @@ async function requestJson(url: URL, apiKey: string): Promise<any> {
   return response.json();
 }
 
+function normalizeDownloadUrl(raw: unknown): string | undefined {
+  if (typeof raw !== 'string' || !raw) return undefined;
+  try {
+    const url = new URL(raw.startsWith('/subtitle/') ? `https://dl.subdl.com${raw}` : raw);
+    if (url.protocol === 'https:' && url.hostname === 'dl.subdl.com' && url.pathname.startsWith('/subtitle/')) return url.toString();
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
 export async function searchSubDL(query: SubtitleSearchQuery): Promise<SubtitleResult[]> {
   const apiKey = process.env.SUBDL_API_KEY;
   if (!apiKey) throw new Error('کلید SUBDL_API_KEY تنظیم نشده است.');
@@ -42,22 +53,34 @@ export async function searchSubDL(query: SubtitleSearchQuery): Promise<SubtitleR
   if (query.episode !== undefined) subtitleParams.set('episode', String(query.episode));
   const data = await requestJson(new URL(`${API}/subtitles/search?${subtitleParams}`), apiKey);
   const entries = Array.isArray(data.subtitles) ? data.subtitles : [];
-  return entries.map((item: any, index: number) => {
-    const rawUrl = typeof item.url === 'string' ? item.url : '';
-    const downloadUrl = rawUrl.startsWith('https://') ? rawUrl : rawUrl.startsWith('/subtitle/') ? `https://dl.subdl.com${rawUrl}` : undefined;
+  const files = entries.flatMap((item: any) => {
+    if (Array.isArray(item.unpack_files) && item.unpack_files.length) {
+      return item.unpack_files.map((file: any) => ({
+        ...item,
+        ...file,
+        parentName: item.name,
+        parentRelease: item.release_name,
+      }));
+    }
+    return [item];
+  });
+
+  return files.map((item: any, index: number) => {
+    const rawUrl = item.url;
+    const downloadUrl = normalizeDownloadUrl(rawUrl);
     const lang = String(item.lang ?? item.language ?? 'unknown').toLowerCase();
     const ext = String(item.format ?? item.name?.split('.').pop() ?? 'srt').toLowerCase();
     return {
       id: `subdl-${item.file_n_id ?? item.n_id ?? index}`,
       provider: 'subdl' as const,
-      title: String(item.name ?? title.name ?? query.query),
+      title: String(item.name ?? item.parentName ?? title.name ?? query.query),
       language: lang,
-      release: String(item.release_name ?? item.name ?? title.name ?? ''),
+      release: String(item.release_name ?? item.parentRelease ?? item.name ?? title.name ?? ''),
       format: ['srt', 'vtt', 'ass', 'ssa', 'zip'].includes(ext) ? ext : 'unknown',
       season: Number.isFinite(Number(item.season)) ? Number(item.season) : undefined,
       episode: Number.isFinite(Number(item.episode)) ? Number(item.episode) : undefined,
       downloadUrl,
-      providerUrl: typeof item.url === 'string' && item.url.startsWith('https://') ? item.url : undefined,
+      providerUrl: typeof rawUrl === 'string' && rawUrl.startsWith('https://') ? rawUrl : undefined,
     };
   });
 }

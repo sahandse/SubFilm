@@ -1,66 +1,53 @@
 # SubFilm
 
-A bilingual Persian/English subtitle discovery app built with TypeScript, React, Vite, and an Express API.
+A bilingual Persian/English subtitle-discovery catalog built with TypeScript, React, and Vite. The GitHub Pages version works entirely as a static website and does not require a Node.js backend.
 
-## Features
+## GitHub Pages mode
 
-- Persian RTL and English LTR interface
-- Live subtitle search through provider adapters
-- Search filters for language, movie/series type, year, season, and episode
-- Unified results from SubDL and OpenSubtitles
-- Authenticated OpenSubtitles download-link requests
-- Short-lived in-memory search cache to reduce repeated API usage
-- Provider status and actionable API error messages
-- Rate-limited API, CORS allowlist, input validation, and download-host allowlist
-- CI type-check and production build
+- Static title catalog bundled in `src/catalog.ts`
+- Client-side search supports English titles and Persian aliases
+- Local filters for movie/series and release year
+- Optional language, season, and episode values are added to the external provider search
+- Each result opens an OpenSubtitles search page; the site does not claim a subtitle file is available until the provider confirms it
+- No API keys are exposed in the browser and no backend requests are made by the static site
 
-## Requirements
+## Update the catalog
 
-- Node.js 20 or newer
-- API key for each subtitle provider you want to enable
+Edit `src/catalog.ts` and add an item using this shape:
+
+```ts
+{
+  id: 'unique-slug',
+  title: 'Example Movie',
+  aliases: ['عنوان فارسی', 'example movie'],
+  year: 2024,
+  kind: 'movie'
+}
+```
+
+Use `kind: 'tv'` for a series. Keep `id` unique. The site searches `title` and `aliases` locally. After committing to `main`, GitHub Actions builds and deploys the updated catalog to GitHub Pages.
+
+**Important:** the bundled catalog is a list of searchable film/series titles, not a verified archive of subtitle files. Availability, language, and download links are checked on OpenSubtitles after the user opens the external search. The static site cannot perform live provider API searches or securely use provider API keys by itself.
 
 ## Run locally
 
 ```bash
 npm install
-cp .env.example .env
-npm run dev
+npm run dev:web
 ```
 
-The Vite frontend runs on `http://localhost:5173`; the API runs on `http://localhost:8787`. The Vite development server proxies `/api` requests to the API server.
+The static frontend runs with Vite. The optional Express API code remains in `server/` for a future server-hosted version, but it is not used by the GitHub Pages site.
 
-## Provider configuration
+## Optional API version
 
-Edit your local `.env` file and add the keys you obtain from the providers:
+The repository retains a Node.js/Express API implementation for a separately hosted version. That optional version requires Node.js 20+, provider API keys, and server-side environment configuration. Never place secret API keys in client-side `VITE_*` variables or commit `.env`.
 
-- `SUBDL_API_KEY` — SubDL API key
-- `OPENSUBTITLES_API_KEY` — OpenSubtitles API key
-- `OPENSUBTITLES_USER_AGENT` — application name/version required by the provider
-
-Never commit `.env` or put API keys in client-side variables such as `VITE_*`. Configure secrets in the hosting provider's server-side environment settings.
-
-SubDL API documentation: https://subdl.com/fa/api-doc  
-OpenSubtitles API documentation: https://www.opensubtitles.com/en/consumers
-
-API access, quotas, language availability, and download behavior are controlled by each provider. SubFilm does not promise that every search will return results. Download links are only exposed when a provider returns a supported URL.
-
-## Production build
+## Build and test
 
 ```bash
 npm run typecheck
 npm run build
-npm start
-```
+npm test
+``
 
-The Express API and frontend need to be deployed on a Node-capable host, or the frontend and API need to be deployed separately with `VITE_API_BASE_URL` set to the public API origin. A static-only GitHub Pages deployment cannot run the Express API.
-
-## API endpoints
-
-- `GET /api/health` — API status and provider-key presence (never exposes key values)
-- `GET /api/subtitles?q=Inception&languages=fa,en&type=movie&year=2010` — merged subtitle search
-- `GET /api/download?url=...` — redirects only to supported SubDL download URLs
-- `POST /api/download/opensubtitles` with `{ "fileId": 123 }` — requests a temporary download link using the server-side API key
-
-## Status
-
-Live search and provider-specific download-link flow are implemented in code. Configure provider keys and verify the CI build before treating the service as production-ready.
+The GitHub Actions workflow deploys the `dist` directory to GitHub Pages on pushes to `main`.

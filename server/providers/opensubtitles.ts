@@ -2,6 +2,14 @@ import type { SubtitleResult, SubtitleSearchQuery } from '../types.js';
 
 const API = 'https://api.opensubtitles.com/api/v1';
 
+function headers(apiKey: string) {
+  return {
+    'Api-Key': apiKey,
+    'User-Agent': process.env.OPENSUBTITLES_USER_AGENT || 'SubFilm v0.3.0',
+    Accept: 'application/json',
+  };
+}
+
 export async function searchOpenSubtitles(query: SubtitleSearchQuery): Promise<SubtitleResult[]> {
   const apiKey = process.env.OPENSUBTITLES_API_KEY;
   if (!apiKey) throw new Error('کلید OPENSUBTITLES_API_KEY تنظیم نشده است.');
@@ -11,7 +19,7 @@ export async function searchOpenSubtitles(query: SubtitleSearchQuery): Promise<S
   if (query.season !== undefined) params.set('season_number', String(query.season));
   if (query.episode !== undefined) params.set('episode_number', String(query.episode));
   const response = await fetch(`${API}/subtitles?${params}`, {
-    headers: { 'Api-Key': apiKey, 'User-Agent': process.env.OPENSUBTITLES_USER_AGENT || 'SubFilm v0.1.0', Accept: 'application/json' },
+    headers: headers(apiKey),
     signal: AbortSignal.timeout(12000),
   });
   if (!response.ok) {
@@ -25,6 +33,7 @@ export async function searchOpenSubtitles(query: SubtitleSearchQuery): Promise<S
     const attributes = item.attributes ?? {};
     const file = Array.isArray(attributes.files) ? attributes.files[0] : undefined;
     const feature = attributes.feature_details ?? {};
+    const fileId = Number(file?.file_id);
     return {
       id: `opensubtitles-${item.id ?? index}`,
       provider: 'opensubtitles' as const,
@@ -36,7 +45,32 @@ export async function searchOpenSubtitles(query: SubtitleSearchQuery): Promise<S
       rating: Number(attributes.ratings ?? 0),
       season: Number.isFinite(Number(feature.season_number)) ? Number(feature.season_number) : undefined,
       episode: Number.isFinite(Number(feature.episode_number)) ? Number(feature.episode_number) : undefined,
+      downloadFileId: Number.isSafeInteger(fileId) && fileId > 0 ? fileId : undefined,
       providerUrl: typeof attributes.url === 'string' ? attributes.url : 'https://www.opensubtitles.com/',
     };
   });
+}
+
+export async function requestOpenSubtitlesDownload(fileId: number): Promise<string> {
+  const apiKey = process.env.OPENSUBTITLES_API_KEY;
+  if (!apiKey) throw new Error('کلید OPENSUBTITLES_API_KEY تنظیم نشده است.');
+  const response = await fetch(`${API}/download`, {
+    method: 'POST',
+    headers: { ...headers(apiKey), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ file_id: fileId }),
+    signal: AbortSignal.timeout(12000),
+  });
+  if (!response.ok) {
+    if (response.status === 429) throw new Error('سهمیه دانلود OpenSubtitles پر شده است.');
+    if (response.status === 401 || response.status === 403) throw new Error('کلید API اجازه دانلود ندارد یا معتبر نیست.');
+    throw new Error(`OpenSubtitles پاسخ دانلود ${response.status} برگرداند.`);
+  }
+  const data: any = await response.json();
+  if (typeof data.link !== 'string') throw new Error('سرویس لینک دانلود معتبری برنگرداند.');
+  let url: URL;
+  try { url = new URL(data.link); } catch { throw new Error('لینک دانلود برگشتی معتبر نیست.'); }
+  if (url.protocol !== 'https:' || !(url.hostname === 'opensubtitles.com' || url.hostname.endsWith('.opensubtitles.com'))) {
+    throw new Error('میزبان لینک دانلود برگشتی مورد تأیید نیست.');
+  }
+  return url.toString();
 }

@@ -49,6 +49,7 @@ export default {
       languages: languages || "FA,EN",
       subs_per_page: "30",
       client: "custom_integration",
+      api_key: env.SUBDL_API_KEY,
       unpack: "1",
     });
     if (Number.isInteger(year) && year >= 1888 && year <= 2100) params.set("year", String(year));
@@ -57,7 +58,7 @@ export default {
 
     try {
       const upstream = await fetch("https://api.subdl.com/api/v1/subtitles?" + params.toString(), {
-        headers: { "x-api-key": env.SUBDL_API_KEY, "Accept": "application/json" },
+        headers: { "Accept": "application/json" },
         signal: AbortSignal.timeout(12000),
       });
       const text = await upstream.text();

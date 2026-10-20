@@ -9,6 +9,7 @@ type Subtitle = {
   release: string;
   format: string;
   downloads?: number;
+  downloadFileId?: number;
   season?: number;
   episode?: number;
   downloadUrl?: string;
@@ -31,6 +32,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   async function searchSubtitles(searchTerm = query) {
     const cleaned = searchTerm.trim();
@@ -64,6 +66,30 @@ export default function App() {
       setError(err instanceof Error ? err.message : (english ? 'Could not connect to the SubFilm API.' : 'اتصال به API سایت برقرار نشد.'));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function downloadOpenSubtitles(item: Subtitle) {
+    if (!item.downloadFileId) return;
+    setDownloadingId(item.id);
+    setError('');
+    try {
+      const response = await fetch(`${API_BASE}/api/download/opensubtitles`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ fileId: item.downloadFileId }),
+      });
+      const data = await response.json();
+      if (!response.ok || typeof data.url !== 'string') throw new Error(data.error || (english ? 'Download link could not be created.' : 'ساخت لینک دانلود ناموفق بود.'));
+      const link = document.createElement('a');
+      link.href = data.url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.click();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : (english ? 'Download failed.' : 'دانلود ناموفق بود.'));
+    } finally {
+      setDownloadingId(null);
     }
   }
 
@@ -113,7 +139,8 @@ export default function App() {
           const persian = ['fa','fas','per','persian'].includes(item.language.toLowerCase());
           const title = item.title || item.release || 'Subtitle';
           const downloadHref = item.downloadUrl ? `${API_BASE}/api/download?url=${encodeURIComponent(item.downloadUrl)}` : item.providerUrl;
-          return <article className="subtitle-card" key={item.id}><div className="card-poster result-poster"><div className="result-poster-symbol">{item.provider === 'subdl' ? <Languages size={34}/> : <Captions size={40}/>}</div><span className="content-type">{item.provider === 'subdl' ? 'SubDL' : 'OpenSubtitles'}</span><span className="poster-year">{item.format.toUpperCase()}</span></div><div className="card-body"><div className="card-title-row"><h3 title={title}>{title}</h3><span className="language-tag">{persian ? 'فارسی' : item.language.toUpperCase()}</span></div><p>{item.release || (english ? 'Subtitle release' : 'نسخه زیرنویس')}</p><div className="quality-row"><span>{item.season !== undefined ? `S${String(item.season).padStart(2,'0')}` : ''}{item.episode !== undefined ? ` · E${String(item.episode).padStart(2,'0')}` : ''}{item.downloads ? ` · ${item.downloads.toLocaleString()} downloads` : ''}</span><span className="source-label">{item.provider}</span></div>{downloadHref ? <a className="download-button" href={downloadHref} target="_blank" rel="noreferrer"><Download size={16}/>{item.downloadUrl ? (english ? 'Download subtitle' : 'دریافت زیرنویس') : (english ? 'Open provider' : 'مشاهده در منبع')}<ExternalLink size={14}/></a> : <button className="download-button" disabled><Download size={16}/>{english ? 'Download unavailable' : 'دانلود در دسترس نیست'}</button>}</div></article>;
+          const canRequestOpenSubtitlesDownload = item.provider === 'opensubtitles' && Boolean(item.downloadFileId);
+          return <article className="subtitle-card" key={item.id}><div className="card-poster result-poster"><div className="result-poster-symbol">{item.provider === 'subdl' ? <Languages size={34}/> : <Captions size={40}/>}</div><span className="content-type">{item.provider === 'subdl' ? 'SubDL' : 'OpenSubtitles'}</span><span className="poster-year">{item.format.toUpperCase()}</span></div><div className="card-body"><div className="card-title-row"><h3 title={title}>{title}</h3><span className="language-tag">{persian ? 'فارسی' : item.language.toUpperCase()}</span></div><p>{item.release || (english ? 'Subtitle release' : 'نسخه زیرنویس')}</p><div className="quality-row"><span>{item.season !== undefined ? `S${String(item.season).padStart(2,'0')}` : ''}{item.episode !== undefined ? ` · E${String(item.episode).padStart(2,'0')}` : ''}{item.downloads ? ` · ${item.downloads.toLocaleString()} downloads` : ''}</span><span className="source-label">{item.provider}</span></div>{canRequestOpenSubtitlesDownload ? <button className="download-button" disabled={downloadingId === item.id} onClick={() => void downloadOpenSubtitles(item)}>{downloadingId === item.id ? <LoaderCircle className="spin" size={16}/> : <Download size={16}/>} {downloadingId === item.id ? (english ? 'Preparing…' : 'در حال آماده‌سازی…') : (english ? 'Download subtitle' : 'دریافت زیرنویس')}<ExternalLink size={14}/></button> : downloadHref ? <a className="download-button" href={downloadHref} target="_blank" rel="noreferrer"><Download size={16}/>{item.downloadUrl ? (english ? 'Download subtitle' : 'دریافت زیرنویس') : (english ? 'Open provider' : 'مشاهده در منبع')}<ExternalLink size={14}/></a> : <button className="download-button" disabled><Download size={16}/>{english ? 'Download unavailable' : 'دانلود در دسترس نیست'}</button>}</div></article>;
         })}</div>}
         {providers.length > 0 && <div className="provider-status"><b>{english ? 'Provider status' : 'وضعیت منابع'}</b>{providers.map((provider) => <div key={provider.provider}><span className={provider.enabled && !provider.error ? 'provider-dot active' : 'provider-dot'}/><span>{provider.provider}</span><span>{!provider.enabled ? (english ? 'API key missing' : 'کلید API تنظیم نشده') : provider.error ? provider.error : (english ? 'Connected' : 'پاسخ دریافت شد')}</span></div>)}</div>}
         <div className="provider-strip"><div className="provider-icon"><Languages size={22}/></div><div><b>{english ? 'More sources, one search' : 'منابع بیشتر، یک جست‌وجو'}</b><p>{english ? 'Provider results are merged when their API keys are configured.' : 'با تنظیم کلیدهای API، نتایج منابع مختلف در یک فهرست ترکیب می‌شوند.'}</p></div><span className="coming-soon">SUBFILM API</span></div>

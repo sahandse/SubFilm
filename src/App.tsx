@@ -2,6 +2,9 @@ import { useMemo, useState } from 'react';
 import { Search, Captions, Languages, Film, Tv, SlidersHorizontal, Sparkles, Github, ChevronDown, ArrowUpLeft, ExternalLink, Database, Info } from 'lucide-react';
 import { catalog } from './catalog';
 
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\\/$/, '');
+type SubtitleItem = { name?: string; release_name?: string; language?: string; format?: string; url?: string; season?: number; episode?: number; unpack_files?: Array<{ name?: string; language?: string; format?: string; url?: string; season?: number; episode?: number }> };
+
 export default function App() {
   const [query, setQuery] = useState('');
   const [language, setLanguage] = useState('fa');
@@ -12,6 +15,9 @@ export default function App() {
   const [english, setEnglish] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [liveSubtitles, setLiveSubtitles] = useState<SubtitleItem[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [apiMessage, setApiMessage] = useState('');
 
   const titles = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
@@ -70,7 +76,7 @@ export default function App() {
           <label>{english ? 'Episode (optional)' : 'قسمت (اختیاری)'}<input inputMode="numeric" value={episode} onChange={(e) => setEpisode(e.target.value.replace(/\D/g, '').slice(0,3))} placeholder="1"/></label>
           <button onClick={resetFilters}>{english ? 'Reset filters' : 'پاک‌کردن فیلترها'}</button>
         </div>}
-        <div className="results-meta"><span>{hasSearched ? (english ? `${titles.length} catalog matches` : `${titles.length} عنوان پیدا شد`) : (english ? `${catalog.length} titles available` : `${catalog.length} عنوان آماده جست‌وجو`)}</span><span className="demo-note"><span/>{english ? 'Static catalog · provider results are not cached here' : 'فهرست ثابت · نتایج منبع خارجی ذخیره نمی‌شوند'}</span></div>
+        {hasSearched && <div className="status-panel" role="status"><Info size={20}/><span>{loading ? (english ? 'Searching SubDL…' : 'در حال جست‌وجو در SubDL…') : apiMessage}</span></div>}\n        {liveSubtitles && liveSubtitles.length > 0 && <div className="subtitle-grid live-subtitle-grid">{liveSubtitles.map((sub, index) => { const files = Array.isArray(sub.unpack_files) ? sub.unpack_files : []; const target = sub.url ? (sub.url.startsWith('http') ? sub.url : 'https://dl.subdl.com' + sub.url) : (files[0]?.url ? (files[0].url!.startsWith('http') ? files[0].url : 'https://dl.subdl.com' + files[0].url) : 'https://subdl.com'); return <article className="subtitle-card" key={(sub.url || sub.name || 'subtitle') + index}><div className="card-poster result-poster"><div className="result-poster-symbol"><Captions size={34}/></div><span className="content-type">{sub.language || (english ? 'Subtitle' : 'زیرنویس')}</span><span className="poster-year">{sub.format || 'ZIP/SRT'}</span></div><div className="card-body"><div className="card-title-row"><h3 title={sub.release_name || sub.name || 'SubDL subtitle'}>{sub.release_name || sub.name || (english ? 'Subtitle file' : 'فایل زیرنویس')}</h3><span className="language-tag">SubDL</span></div><p>{[sub.season ? `S${sub.season}` : '', sub.episode ? `E${sub.episode}` : '', files.length ? `${files.length} ${english ? 'files' : 'فایل'}` : ''].filter(Boolean).join(' · ') || (english ? 'Live result' : 'نتیجه زنده')}</p><div className="quality-row"><span>{english ? 'Provider result' : 'نتیجه منبع'}</span><span className="source-label">SubDL</span></div><a className="download-button" href={target} target="_blank" rel="noopener noreferrer"><ExternalLink size={16}/>{english ? 'Open subtitle' : 'بازکردن زیرنویس'}<ArrowUpLeft size={14}/></a></div></article>; })}</div>}\n\n        <div className="results-meta"><span>{hasSearched ? (english ? `${titles.length} catalog matches` : `${titles.length} عنوان در فهرست داخلی`) : (english ? `${catalog.length} titles available` : `${catalog.length} عنوان آماده جست‌وجو`)}</span><span className="demo-note"><span/>{english ? 'Static catalog · provider results are not cached here' : 'فهرست ثابت · نتایج منبع خارجی ذخیره نمی‌شوند'}</span></div>
 
         <div className="status-panel" role="note"><Info size={20}/><span>{english ? 'This is a searchable title catalog, not a database of verified subtitle files. Subtitle availability is checked on the external provider after you open it.' : 'این فهرست عنوان فیلم و سریال است، نه آرشیو فایل‌های زیرنویسِ تأییدشده. موجود بودن زیرنویس پس از ورود به منبع خارجی بررسی می‌شود.'}</span></div>
 

@@ -4,23 +4,26 @@ The website stays on GitHub Pages. A small Cloudflare Worker proxies SubDL reque
 
 ## One-time setup
 
-1. In Cloudflare Dashboard, open **Workers & Pages** and create a Worker named **subfilm-api**.
-2. Deploy the contents of `worker/index.js` as the Worker entry point (or use Wrangler from this repository; see below).
-3. In the Worker settings, add a **Secret** named `SUBDL_API_KEY` and paste your SubDL key there. Do not commit the key or put it in a `VITE_*` variable.
-4. Deploy the Worker. Its URL will look like `https://subfilm-api.<your-account-subdomain>.workers.dev`.
-5. In GitHub, open **Settings → Secrets and variables → Actions → Variables** and create repository variable `SUBFILM_API_BASE_URL` with the Worker URL (no trailing slash).
-6. Re-run **Actions → Deploy SubFilm to GitHub Pages**.
+1. In Cloudflare, create an API token allowed to edit Workers and obtain your Cloudflare Account ID.
+2. In GitHub, open **Settings → Secrets and variables → Actions → Secrets** and add these three repository secrets:
+   - `CLOUDFLARE_API_TOKEN` — the Cloudflare API token
+   - `CLOUDFLARE_ACCOUNT_ID` — your Cloudflare Account ID
+   - `SUBDL_API_KEY` — your SubDL API key
+3. Open **Actions → Deploy SubFilm Worker to Cloudflare → Run workflow**. The workflow deploys `worker/index.js` and stores the SubDL key as a Worker secret; it never writes the key to the repository.
+4. In the deployment logs, find the Worker URL. It will look like `https://subfilm-api.<your-account-subdomain>.workers.dev`.
+5. In GitHub, open **Settings → Secrets and variables → Actions → Variables** and create repository variable `SUBFILM_API_BASE_URL` with that Worker URL (no trailing slash).
+6. Re-run **Actions → Deploy SubFilm to GitHub Pages** to build the site with the Worker URL.
 
 ## Deploy with Wrangler (optional)
 
-Install Wrangler and authenticate to Cloudflare, then from the repository root:
+Alternatively, you can deploy from a local terminal with Wrangler after authenticating to Cloudflare:
 
 ```sh
 npx wrangler deploy
 npx wrangler secret put SUBDL_API_KEY
 ```
 
-When prompted by the second command, paste the key into the terminal prompt. Do not put it in a command argument or commit it.
+Enter the key only in Wrangler's secret prompt. Do not put it in a command argument or commit it.
 
 ## Endpoints
 

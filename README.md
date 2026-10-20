@@ -8,8 +8,10 @@ A bilingual Persian/English subtitle-discovery catalog built with TypeScript, Re
 - Client-side search supports English titles and Persian aliases
 - Local filters for movie/series and release year
 - Optional language, season, and episode values are added to the external provider search
-- Each result opens an OpenSubtitles search page; the site does not claim a subtitle file is available until the provider confirms it
-- No API keys are exposed in the browser and no backend requests are made by the static site
+- The local title catalog works without an API
+- When the optional Cloudflare Worker is deployed and `SUBFILM_API_BASE_URL` is configured, the search form queries SubDL live
+- SubDL API keys stay in Cloudflare Worker secrets and are never bundled into the browser
+- If the Worker is not configured, the site keeps the local catalog and explains that live search is unavailable
 
 ## Update the catalog
 
@@ -27,7 +29,7 @@ Edit `src/catalog.ts` and add an item using this shape:
 
 Use `kind: 'tv'` for a series. Keep `id` unique. The site searches `title` and `aliases` locally. After committing to `main`, GitHub Actions builds and deploys the updated catalog to GitHub Pages.
 
-**Important:** the bundled catalog is a list of searchable film/series titles, not a verified archive of subtitle files. Availability, language, and download links are checked on OpenSubtitles after the user opens the external search. The static site cannot perform live provider API searches or securely use provider API keys by itself.
+**Important:** the bundled catalog is a list of searchable film/series titles, not a verified archive of subtitle files. Availability, language, and download links are checked on OpenSubtitles after the user opens the external search. GitHub Pages cannot run server-side code or safely store provider API keys by itself. For live SubDL results, deploy the optional Cloudflare Worker using `docs/SUBDL_SETUP.md`.
 
 ## Run locally
 

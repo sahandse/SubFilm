@@ -16,8 +16,8 @@ const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173,http:/
 
 app.disable('x-powered-by');
 app.use(cors({ origin: (origin, callback) => {
-  // Same-origin production requests do not need CORS headers. For cross-origin
-  // requests, only emit CORS headers for explicitly configured origins.
+  // Same-origin requests work without CORS headers; cross-origin browser
+  // access is enabled only for explicitly configured origins.
   callback(null, !origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin));
 } }));
 app.use(express.json({ limit: '32kb' }));
@@ -57,7 +57,9 @@ app.get('/api/subtitles', async (req, res) => {
       catch (error) { return { provider: 'subdl', enabled: true, subtitles: [], error: error instanceof Error ? error.message : 'خطای ناشناخته SubDL' }; }
     })(),
     (async () => {
-      if (!process.env.OPENSUBTITLES_API_KEY) return { provider: 'opensubtitles', enabled: false, subtitles: [], error: error instanceof Error ? error.message : 'خطای ناشناخته OpenSubtitles' }; }
+      if (!process.env.OPENSUBTITLES_API_KEY) return { provider: 'opensubtitles', enabled: false, subtitles: [], error: 'کلید API تنظیم نشده است.' };
+      try { return { provider: 'opensubtitles', enabled: true, subtitles: await searchOpenSubtitles(search) }; }
+      catch (error) { return { provider: 'opensubtitles', enabled: true, subtitles: [], error: error instanceof Error ? error.message : 'خطای ناشناخته OpenSubtitles' }; }
     })(),
   ];
 

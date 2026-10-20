@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import path from 'node:path';
 import rateLimit from 'express-rate-limit';
 import { searchOpenSubtitles } from './providers/opensubtitles.js';
 import { searchSubDL } from './providers/subdl.js';
@@ -89,6 +90,15 @@ app.get('/api/download', (req, res) => {
   return res.redirect(302, url.toString());
 });
 
+if (process.env.NODE_ENV === 'production') {
+  const webRoot = path.resolve(process.cwd(), 'dist');
+  app.use(express.static(webRoot, { index: false, maxAge: '1h' }));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'مسیر API پیدا نشد.' });
+    return res.sendFile(path.join(webRoot, 'index.html'), (error) => error ? next(error) : undefined);
+  });
+}
+
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   if (error instanceof Error && error.message.includes('CORS')) return res.status(403).json({ error: 'مبدأ درخواست مجاز نیست.' });
   console.error('[SubFilm API]', error instanceof Error ? error.message : 'Unknown error');
@@ -96,5 +106,5 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
 });
 
 app.listen(port, () => {
-  console.log(`SubFilm API listening on http://localhost:${port}`);
+  console.log(`SubFilm service listening on port ${port}`);
 });

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Search, Captions, Languages, Film, Tv, SlidersHorizontal, Sparkles, Github, ChevronDown, ArrowUpLeft, ExternalLink, Database, Info } from 'lucide-react';
 import { catalog } from './catalog';
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\\/$/, '');
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 type SubtitleItem = { name?: string; release_name?: string; language?: string; format?: string; url?: string; season?: number; episode?: number; unpack_files?: Array<{ name?: string; language?: string; format?: string; url?: string; season?: number; episode?: number }> };
 
 export default function App() {

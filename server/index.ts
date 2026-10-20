@@ -8,6 +8,8 @@ import { searchSubDL } from './providers/subdl.js';
 import type { ProviderSearchResult, SubtitleSearchQuery } from './types.js';
 
 const app = express();
+const searchCache = new Map<string, { expiresAt: number; payload: unknown }>();
+const SEARCH_CACHE_TTL_MS = 90_000;
 const port = Number(process.env.PORT || 8787);
 const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173,http://127.0.0.1:5173').split(',').map((value) => value.trim()).filter(Boolean);
 
@@ -56,6 +58,11 @@ app.get('/api/subtitles', async (req, res) => {
     limit: Math.min(Math.max(Number(req.query.limit) || 20, 1), 30),
   };
 
+  const cacheKey = JSON.stringify({ ...search, subdl: Boolean(process.env.SUBDL_API_KEY), opensubtitles: Boolean(process.env.OPENSUBTITLES_API_KEY) });
+  const cached = searchCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return res.json(cached.payload);
+  if (cached) searchCache.delete(cacheKey);
+
   const tasks: Promise<ProviderSearchResult>[] = [
     (async () => {
       if (!process.env.SUBDL_API_KEY) return { provider: 'subdl', enabled: false, subtitles: [], error: 'کلید API تنظیم نشده است.' };
@@ -72,12 +79,20 @@ app.get('/api/subtitles', async (req, res) => {
   const providers = await Promise.all(tasks);
   const subtitles = providers.flatMap((provider) => provider.subtitles);
   subtitles.sort((a, b) => (b.downloads ?? 0) - (a.downloads ?? 0));
-  res.json({
+  const payload = {
     query: search.query,
     total: subtitles.length,
     subtitles: subtitles.slice(0, search.limit),
     providers: providers.map(({ provider, enabled, error }) => ({ provider, enabled, ...(error ? { error } : {}) })),
-  });
+  };
+  if (providers.every((provider) => !provider.error)) {
+    if (searchCache.size >= 200) {
+      const oldestKey = searchCache.keys().next().value;
+      if (oldestKey) searchCache.delete(oldestKey);
+    }
+    searchCache.set(cacheKey, { expiresAt: Date.now() + SEARCH_CACHE_TTL_MS, payload });
+  }
+  return res.json(payload);
 });
 
 app.get('/api/download', (req, res) => {

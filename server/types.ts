@@ -19,6 +19,7 @@ export type SubtitleResult = {
   rating?: number;
   season?: number;
   episode?: number;
+  downloadFileId?: number;
   downloadUrl?: string;
   providerUrl?: string;
 };

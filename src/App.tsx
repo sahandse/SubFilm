@@ -29,9 +29,43 @@ export default function App() {
     });
   }, [query, kind, year]);
 
-  function searchSubtitles(searchTerm = query) {
+  async function searchSubtitles(searchTerm = query) {
     setQuery(searchTerm);
     setHasSearched(true);
+    setLiveSubtitles(null);
+    setApiMessage('');
+    if (!API_BASE) {
+      setApiMessage(english ? 'Live SubDL search is not configured yet. The local title catalog is still available.' : 'جست‌وجوی زنده SubDL هنوز پیکربندی نشده؛ فهرست داخلی همچنان در دسترس است.');
+      return;
+    }
+    if (searchTerm.trim().length < 2) {
+      setApiMessage(english ? 'Enter at least 2 characters to search SubDL.' : 'برای جست‌وجو در SubDL حداقل ۲ نویسه وارد کن.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        q: searchTerm.trim(),
+        type: kind === 'all' ? 'all' : kind,
+        languages: language === 'fa' ? 'FA' : language === 'en' ? 'EN' : 'FA,EN'
+      });
+      if (year) params.set('year', year);
+      if (season) params.set('season', season);
+      if (episode) params.set('episode', episode);
+      const response = await fetch(API_BASE + '/api/subtitles?' + params.toString(), { headers: { Accept: 'application/json' } });
+      const payload = await response.json();
+      if (!response.ok || payload.ok !== true) throw new Error(payload.error || 'SubDL request failed');
+      const items: SubtitleItem[] = Array.isArray(payload.subtitles) ? payload.subtitles : [];
+      setLiveSubtitles(items);
+      setApiMessage(items.length
+        ? (english ? `${items.length} live subtitle results from SubDL.` : `${items.length} نتیجه زنده از SubDL دریافت شد.`)
+        : (english ? 'SubDL returned no subtitles for these filters.' : 'با این فیلترها زیرنویسی از SubDL برنگشت.'));
+    } catch {
+      setLiveSubtitles([]);
+      setApiMessage(english ? 'Live search failed. Check the Worker setup and try again.' : 'جست‌وجوی زنده ناموفق بود؛ تنظیمات Worker را بررسی کن و دوباره تلاش کن.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   function resetFilters() {

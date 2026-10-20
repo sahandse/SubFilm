@@ -31,7 +31,7 @@ Enter the key only in Wrangler's secret prompt. Do not put it in a command argum
 - `GET /api/subtitles?q=Inception&type=movie&languages=FA,EN`
 - TV search accepts optional `season` and `episode`; `year` is optional.
 
-CORS is limited to `https://sahandse.github.io` and localhost for development. The Worker returns only JSON and does not store search requests. The SubDL key is used server-side in the `x-api-key` header.
+CORS is limited to `https://sahandse.github.io` and localhost for development. The Worker returns only JSON and does not store search requests. The legacy SubDL v1 endpoint receives the key as a server-side `api_key` query parameter; it is never sent to the browser.
 
 ## Important
 

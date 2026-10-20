@@ -5,7 +5,8 @@ import path from 'node:path';
 import rateLimit from 'express-rate-limit';
 import { requestOpenSubtitlesDownload, searchOpenSubtitles } from './providers/opensubtitles.js';
 import { searchSubDL } from './providers/subdl.js';
-import type { ProviderSearchResult, SubtitleSearchQuery } from './types.js';
+import type { ProviderSearchResult } from './types.js';
+import { validateSubtitleSearch } from './validation.js';
 
 const app = express();
 const searchCache = new Map<string, { expiresAt: number; payload: unknown }>();
@@ -33,30 +34,15 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.get('/api/subtitles', async (req, res) => {
-  const query = String(req.query.q ?? '').trim();
-  if (query.length < 2) return res.status(400).json({ error: 'نام فیلم یا سریال باید حداقل ۲ حرف داشته باشد.' });
-  if (query.length > 120) return res.status(400).json({ error: 'عبارت جست‌وجو بیش از حد طولانی است.' });
-
-  const languagesRaw = String(req.query.languages ?? 'fa,en');
-  const languages = languagesRaw.split(',').map((value) => value.trim().toLowerCase()).filter((value) => /^[a-z]{2,3}$/.test(value)).slice(0, 5);
-  const typeRaw = String(req.query.type ?? '');
-  if (typeRaw && !['movie', 'tv'].includes(typeRaw)) return res.status(400).json({ error: 'نوع محتوا باید movie یا tv باشد.' });
-  const year = req.query.year ? Number(req.query.year) : undefined;
-  const season = req.query.season ? Number(req.query.season) : undefined;
-  const episode = req.query.episode ? Number(req.query.episode) : undefined;
-  for (const [name, value, min, max] of [['year', year, 1888, 2100], ['season', season, 0, 100], ['episode', episode, 0, 500]] as const) {
-    if (value !== undefined && (!Number.isInteger(value) || value < min || value > max)) return res.status(400).json({ error: `مقدار ${name} معتبر نیست.` });
-  }
-
-  const search: SubtitleSearchQuery = {
-    query,
-    languages: languages.length ? languages : ['fa', 'en'],
-    type: typeRaw ? typeRaw as 'movie' | 'tv' : undefined,
-    year,
-    season,
-    episode,
-    limit: Math.min(Math.max(Number(req.query.limit) || 20, 1), 30),
-  };
+  const validation = validateSubtitleSearch(new URLSearchParams(
+    Object.entries(req.query).flatMap(([key, value]) => {
+      if (typeof value === 'string') return [[key, value]];
+      if (Array.isArray(value)) return [[key, value.filter((item): item is string => typeof item === 'string').join(',')]];
+      return [];
+    }),
+  ));
+  if (!validation.ok) return res.status(400).json({ error: validation.error });
+  const search = validation.value;
 
   const cacheKey = JSON.stringify({ ...search, subdl: Boolean(process.env.SUBDL_API_KEY), opensubtitles: Boolean(process.env.OPENSUBTITLES_API_KEY) });
   const cached = searchCache.get(cacheKey);

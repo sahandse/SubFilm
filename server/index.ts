@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'node:path';
 import rateLimit from 'express-rate-limit';
-import { searchOpenSubtitles } from './providers/opensubtitles.js';
+import { requestOpenSubtitlesDownload, searchOpenSubtitles } from './providers/opensubtitles.js';
 import { searchSubDL } from './providers/subdl.js';
 import type { ProviderSearchResult, SubtitleSearchQuery } from './types.js';
 
@@ -88,6 +88,20 @@ app.get('/api/download', (req, res) => {
     return res.status(400).json({ error: 'این میزبان دانلود مجاز نیست.' });
   }
   return res.redirect(302, url.toString());
+});
+
+app.post('/api/download/opensubtitles', async (req, res) => {
+  const fileId = Number(req.body?.fileId);
+  if (!Number.isSafeInteger(fileId) || fileId < 1) {
+    return res.status(400).json({ error: 'شناسه فایل زیرنویس معتبر نیست.' });
+  }
+  try {
+    const link = await requestOpenSubtitlesDownload(fileId);
+    return res.json({ url: link });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'خطای دریافت لینک دانلود.';
+    return res.status(502).json({ error: message });
+  }
 });
 
 if (process.env.NODE_ENV === 'production') {

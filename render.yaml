@@ -3,6 +3,7 @@ services:
     name: subfilm
     runtime: node
     plan: free
+    autoDeploy: true
     buildCommand: npm install && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
@@ -14,4 +15,4 @@ services:
       - key: OPENSUBTITLES_API_KEY
         sync: false
       - key: OPENSUBTITLES_USER_AGENT
-        value: SubFilm v0.2.0
+        value: SubFilm v0.3.0
